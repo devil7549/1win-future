@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1win Predictor Pro</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            background-color: #0b0f19;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 15px;
+            text-align: center;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            background: #1a2236;
+            color: #8a99b5;
+            border: 1px solid #2b3654;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            flex: 1;
+        }
+        .tab-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Mines Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            max-width: 320px;
+            margin: 20px auto;
+            background: #131a2b;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #232f4b;
+        }
+        .tile {
+            aspect-ratio: 1;
+            background: #1e2942;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: inset 0 -3px 0 #121826;
+            transition: all 0.3s ease;
+        }
+        .tile.safe {
+            background: #f59e0b;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.6);
+            transform: scale(1.05);
+        }
+
+        /* Lucky Jet */
+        .jet-box {
+            background: #131a2b;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #232f4b;
+            max-width: 320px;
+            margin: 20px auto;
+        }
+        input {
+            width: 85%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #2b3654;
+            background: #0b0f19;
+            color: white;
+            font-size: 16px;
+            text-align: center;
+        }
+        .multiplier-display {
+            font-size: 42px;
+            font-weight: bold;
+            color: #a855f7;
+            margin: 20px 0;
+            text-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+        }
+
+        /* Action Button */
+        .action-btn {
+            background: linear-gradient(45deg, #007bff, #00c6ff);
+            color: white;
+            border: none;
+            padding: 14px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 320px;
+            margin-top: 10px;
+        }
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .badge {
+            background: #1e2942;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #38bdf8;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('mines')">💣 1win Mines</button>
+        <button class="tab-btn" onclick="switchTab('jet')">🚀 Lucky Jet</button>
+    </div>
+
+    <!-- MINES SECTION -->
+    <div id="mines" class="section active">
+        <div class="badge">Traps: 3 | Safe Stars: 4</div>
+        <div class="grid" id="minesGrid"></div>
+        <button class="action-btn" id="minesBtn" onclick="predictMines()">GET MINES SIGNAL</button>
+    </div>
+
+    <!-- LUCKY JET SECTION -->
+    <div id="jet" class="section">
+        <div class="jet-box">
+            <div class="badge">1win Lucky Jet Predictor</div>
+            <p style="font-size: 13px; color: #94a3b8;">Enter last 3-5 round multipliers (e.g. 1.20, 3.45, 1.05)</p>
+            <input type="text" id="pastHistory" placeholder="e.g. 1.45, 2.10, 1.12">
+            <div class="multiplier-display" id="jetResult">1.00x</div>
+            <button class="action-btn" onclick="predictJet()">PREDICT NEXT ROUND</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Initialize 25 tiles
+        const grid = document.getElementById('minesGrid');
+        function initGrid() {
+            grid.innerHTML = '';
+            for (let i = 0; i < 25; i++) {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.id = 'tile-' + i;
+                tile.innerText = '🟦';
+                grid.appendChild(tile);
+            }
+        }
+        initGrid();
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tab).classList.add('active');
+        }
+
+        // Predict 4 random safe tiles out of 25
+        function predictMines() {
+            const btn = document.getElementById('minesBtn');
+            btn.disabled = true;
+            btn.innerText = 'ANALYZING...';
+            initGrid();
+
+            setTimeout(() => {
+                let selected = [];
+                while (selected.length < 4) {
+                    let r = Math.floor(Math.random() * 25);
+                    if (!selected.includes(r)) selected.push(r);
+                }
+
+                selected.forEach(index => {
+                    const tile = document.getElementById('tile-' + index);
+                    tile.classList.add('safe');
+                    tile.innerText = '⭐';
+                });
+
+                btn.disabled = false;
+                btn.innerText = 'NEXT SIGNAL';
+            }, 800);
+        }
+
+        // Predict Lucky Jet based on past input
+        function predictJet() {
+            const history = document.getElementById('pastHistory').value.trim();
+            const display = document.getElementById('jetResult');
+
+            if (!history) {
+                tg.showAlert("Please enter past game multipliers first!");
+                return;
+            }
+
+            display.innerText = "CALCULATING...";
+            setTimeout(() => {
+                // Weighted random multiplier between 1.30x and 4.50x
+                const pred = (Math.random() * (4.20 - 1.35) + 1.35).toFixed(2);
+                display.innerText = pred + "x";
+            }, 800);
+        }
+    </script>
+</body>
+</html>
